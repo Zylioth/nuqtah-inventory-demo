@@ -2,7 +2,7 @@
 
 A web-based ICT asset management system for a school's IT department: track inventory, manage serial-tagged hardware, handle borrowing requests end-to-end, and keep an audit log. Built with plain PHP and MySQL, no framework.
 
-**Live demo:** _add your Railway URL here once deployed_
+**Live demo:** _not deployed yet — the screenshots below show this build running against the seeded data._
 **Read-only demo · seeded data · no signup required**
 
 > Visitors can log in and browse everything. Actions that would change data are blocked with a notice, so the demo never breaks and never needs reseeding.
@@ -23,7 +23,14 @@ apart from bugs that were visible in the demo itself.
 
 ## Screenshots
 
-_Pending deployment — drop four screenshots here: admin dashboard, inventory grid, request queue, activity log._
+Captured from this build running against `seed.sql` with `DEMO_MODE=true`.
+
+| | |
+|---|---|
+| ![Admin dashboard](docs/screenshots/admin-dashboard.png) | ![Inventory catalogue](docs/screenshots/inventory-list.png) |
+| **Admin dashboard** — counters, stock health, the requests that need attention | **Inventory catalogue** — search, category filters, per-asset stock |
+| ![Borrowing request queue](docs/screenshots/request-queue.png) | ![Activity log](docs/screenshots/activity-log.png) |
+| **Request queue** — every lifecycle state, each with the action it allows next | **Activity log** — the audit trail written by every admin action |
 
 ---
 
@@ -69,6 +76,7 @@ All accounts share the password **`demo1234`**.
 | `nuriman` | Staff   | An issued item awaiting confirmation            |
 | `faridah` | Staff   | An approved request and a rejected one          |
 | `azman`   | Student | Account still `Pending` (activation flow)       |
+| `rosnah`  | Staff   | Account `Suspended` (blocks login)              |
 
 ---
 
@@ -196,6 +204,33 @@ docker compose down -v && docker compose up --build
 4. Open `http://localhost/<folder>/`.
 5. Leave `DEMO_MODE` unset to use the app fully.
 
+### Railway
+
+The repository ships `railway.json` (Dockerfile builder) and a `Dockerfile` whose
+entrypoint rebinds Apache to `$PORT`, so nothing has to be configured in the
+image itself.
+
+1. **New Project → Deploy from GitHub repo**, pick this repository.
+2. **Add a MySQL service** to the same project and reference it from the app.
+   The plugin injects `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER` and
+   `MYSQLPASSWORD`; `includes/db_connect.php` reads those directly when no `.env`
+   is present, so no database variables need to be written by hand.
+3. Set `DEMO_MODE=true` on the app service. That is the only variable the demo
+   needs.
+4. **Import the data once.** Unlike `docker-compose.yml`, a managed MySQL service
+   starts empty, so `schema.sql` then `seed.sql` have to be loaded against the
+   service's public endpoint:
+   ```bash
+   mysql -h <host> -P <port> -u <user> -p <database> < schema.sql
+   mysql -h <host> -P <port> -u <user> -p <database> < seed.sql
+   ```
+   `seed.sql` truncates every table, which is why it only ever runs against a
+   fresh demo database.
+5. **Generate a domain** under the service's Settings → Networking.
+
+Because the guard is stateless, the demo needs no cron, no reseed job and no
+"restore data" button after the first import.
+
 ---
 
 ## Project structure
@@ -224,6 +259,7 @@ docker compose down -v && docker compose up --build
 ├── assets/                    css, js, images, uploads
 ├── vendor/phpmailer/          vendored PHPMailer
 ├── tests/                     demo guard checks
+├── docs/screenshots/          README images
 ├── schema.sql                 structure
 ├── seed.sql                   demo data (relative dates, never goes stale)
 ├── Dockerfile
