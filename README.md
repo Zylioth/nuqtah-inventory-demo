@@ -2,8 +2,10 @@
 
 A web-based ICT asset management system for a school's IT department: track inventory, manage serial-tagged hardware, handle borrowing requests end-to-end, and keep an audit log. Built with plain PHP and MySQL, no framework.
 
-**Live demo:** _not deployed yet — the screenshots below show this build running against the seeded data._
+**Live demo:** **https://nuqtah-demo.up.railway.app** — log in with `admin` / `demo1234`
 **Read-only demo · seeded data · no signup required**
+
+> Running on a Railway trial. If the URL is down, the trial credit has expired rather than the build being broken — everything you need to run it yourself is below.
 
 > Visitors can log in and browse everything. Actions that would change data are blocked with a notice, so the demo never breaks and never needs reseeding.
 
