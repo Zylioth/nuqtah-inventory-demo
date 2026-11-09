@@ -1,0 +1,161 @@
+
+:root {
+    --brand-teal: #097969; 
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+}
+
+footer {
+    width: 100%;
+    margin-top: auto;
+}
+
+.left-panel {
+    background-color: var(--brand-teal);
+    z-index: 2;
+}
+
+
+.right-panel {
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+/* Rounded Card Style */
+.login-card {
+    border-radius: 30px !important;
+    border: none;
+}
+
+/* Custom Button */
+.btn-teal {
+    background-color: var(--brand-teal);
+    border: none;
+}
+
+.btn-teal:hover {
+    background-color: #005a4d;
+}
+
+.hero-section {
+    /* Path to your building image */
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                url('../img/Tahfiz_front.jpg');
+    
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 60vh; 
+    width: 100%;
+}
+
+
+.hero-section h1 {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Card Hover Effect in index*/
+.landing-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-top 0.3s ease;
+    border-top: 4px solid transparent !important;
+}
+
+.landing-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
+    border-top: 4px solid #004d40 !important;
+}
+
+/* Icon Styling */
+.feature-icon {
+    color: #004d40;
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Section Background */
+section.container {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+
+/* index punya lading page hero section */
+.hero-section {
+    position: relative;
+    overflow: hidden; 
+    min-height: 95vh;
+    background: none; /* Removed the static image and gradient */
+}
+
+/* Ensures the video fills the container perfectly */
+.hero-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    z-index: -2; /* Sits at the very back */
+    transform: translateX(-50%) translateY(-50%);
+    object-fit: cover;
+}
+
+/* This replaces the CSS linear-gradient darken effect */
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Adjust 0.6 to make it darker or lighter */
+    z-index: -1; /* Sits between the video and the text */
+}
+
+@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .btn-outline-light:hover {
+        background-color: white !important;
+        color: var(--brand-teal) !important;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.3) !important;
+    }
+
+/* Modern Card Style */
+.card {
+    border-radius: 15px !important; /* Softer corners are more modern */
+    transition: all 0.3s ease-in-out;
+}
+
+.card h3 {
+    color: #004d40; /* Match your brand teal */
+    font-weight: 700;
+}
+
+/* Subtle background pattern */
+section.container {
+    background-image: radial-gradient(#ffffff1a 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .right-panel {
+        display: none; /* Hide image on mobile to focus on the form */
+    }
+    .left-panel {
+        height: 100vh;
+    }
+}

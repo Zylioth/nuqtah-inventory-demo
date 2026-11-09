@@ -1,0 +1,47 @@
+# Local parity with the deployed demo: MySQL 8 + PHP 8.2/Apache.
+#
+#   docker compose up --build
+#   open http://localhost:8080
+#
+# schema.sql and seed.sql are mounted into MySQL's init directory, so the
+# database is created and seeded on the first boot of the volume. To start
+# over: docker compose down -v && docker compose up --build
+#
+# DEMO_MODE=true here on purpose — local testing should exercise the same
+# read-only path the public deployment uses. Unset it to use the app fully.
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: nuqtah_inv
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    environment:
+      MYSQLHOST: db
+      MYSQLPORT: "3306"
+      MYSQLUSER: root
+      MYSQLPASSWORD: root
+      MYSQLDATABASE: nuqtah_inv
+      DEMO_MODE: "true"
+      APP_URL: http://localhost:8080
+    ports:
+      - "8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

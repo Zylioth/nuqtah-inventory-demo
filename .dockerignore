@@ -1,0 +1,6 @@
+.git
+.env
+storage
+tests
+docker-compose.yml
+README.md

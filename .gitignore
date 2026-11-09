@@ -1,0 +1,15 @@
+# Secrets — never commit
+.env
+
+# Demo-mode mail log (records intent, sends nothing)
+storage/*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# local agent handoff notes
+HANDOFF.md
