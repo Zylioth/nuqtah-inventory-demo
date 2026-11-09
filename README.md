@@ -207,29 +207,41 @@ docker compose down -v && docker compose up --build
 ### Railway
 
 The repository ships `railway.json` (Dockerfile builder) and a `Dockerfile` whose
-entrypoint rebinds Apache to `$PORT`, so nothing has to be configured in the
-image itself.
+entrypoint rebinds Apache to `$PORT`, so nothing in the image needs configuring.
 
 1. **New Project → Deploy from GitHub repo**, pick this repository.
-2. **Add a MySQL service** to the same project and reference it from the app.
-   The plugin injects `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER` and
-   `MYSQLPASSWORD`; `includes/db_connect.php` reads those directly when no `.env`
-   is present, so no database variables need to be written by hand.
-3. Set `DEMO_MODE=true` on the app service. That is the only variable the demo
-   needs.
-4. **Import the data once.** Unlike `docker-compose.yml`, a managed MySQL service
-   starts empty, so `schema.sql` then `seed.sql` have to be loaded against the
-   service's public endpoint:
-   ```bash
-   mysql -h <host> -P <port> -u <user> -p <database> < schema.sql
-   mysql -h <host> -P <port> -u <user> -p <database> < seed.sql
+2. **Add a MySQL service** to the same project, then open the app service's
+   Variables and add these five as *reference* variables — Railway does not push
+   another service's variables into yours by itself:
    ```
-   `seed.sql` truncates every table, which is why it only ever runs against a
-   fresh demo database.
-5. **Generate a domain** under the service's Settings → Networking.
+   MYSQLHOST=${{MySQL.MYSQLHOST}}
+   MYSQLPORT=${{MySQL.MYSQLPORT}}
+   MYSQLDATABASE=${{MySQL.MYSQLDATABASE}}
+   MYSQLUSER=${{MySQL.MYSQLUSER}}
+   MYSQLPASSWORD=${{MySQL.MYSQLPASSWORD}}
+   ```
+   `MySQL` is the service's name; use whatever name it was given. These are
+   exactly the names `includes/db_connect.php` already reads, so no code changes
+   are needed and no `.env` is required in the image.
+3. Set `DEMO_MODE=true` on the app service. That is the only other variable the
+   demo needs.
+4. **Import the data once.** A managed MySQL service starts empty — unlike
+   `docker-compose.yml`, nothing seeds it. First enable **Settings → Networking →
+   Public Access** on the MySQL service (this creates a TCP proxy and is billed as
+   network egress), then load the two files from your machine:
+   ```bash
+   mysql -h <tcp-proxy-host> -P <proxy-port> -u <user> -p <database> < schema.sql
+   mysql -h <tcp-proxy-host> -P <proxy-port> -u <user> -p <database> < seed.sql
+   ```
+   Host, port and credentials come from the MySQL service's variables
+   (`RAILWAY_TCP_PROXY_DOMAIN`, `RAILWAY_TCP_PROXY_PORT`, `MYSQLUSER`,
+   `MYSQLPASSWORD`, `MYSQLDATABASE`). `seed.sql` truncates every table, which is
+   why it only ever runs against a fresh demo database.
+5. **Generate a domain** under the app service's Settings → Networking.
 
-Because the guard is stateless, the demo needs no cron, no reseed job and no
-"restore data" button after the first import.
+The site returns a database error until step 4 has run — the container starts fine,
+it simply has no tables yet. Because the guard is stateless, nothing after the
+first import needs a cron job, a reseed script or a "restore data" button.
 
 ---
 
