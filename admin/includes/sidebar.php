@@ -217,6 +217,31 @@
                 </a>
             </li>
         </ul>
+
+        <?php if (function_exists('demo_mode_enabled') && demo_mode_enabled()): ?>
+            <?php if (empty($_SESSION['demo_reset_csrf'])) { $_SESSION['demo_reset_csrf'] = bin2hex(random_bytes(16)); } ?>
+            <style>
+                .demo-reset { margin: .75rem .9rem 0; }
+                .demo-reset button {
+                    display: flex; width: 100%; align-items: center; justify-content: center;
+                    gap: .45rem; padding: .55rem .7rem;
+                    border: 1px dashed rgba(0, 77, 64, .35); border-radius: 10px;
+                    background: rgba(0, 121, 107, .06); color: #004D40;
+                    font: 600 .8rem/1 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+                    cursor: pointer; transition: background .15s ease;
+                }
+                .demo-reset button:hover { background: rgba(0, 121, 107, .14); }
+                .demo-reset-hint { margin: .4rem .9rem 0; font-size: .7rem; line-height: 1.35; color: rgba(0, 77, 64, .62); }
+            </style>
+            <form method="POST" action="../demo_reset.php" class="demo-reset"
+                  onsubmit="return confirm('Reset all demo data back to the seeded state?');">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['demo_reset_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                <button type="submit">
+                    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Reset demo data</span>
+                </button>
+            </form>
+            <p class="demo-reset-hint">Changes are live and shared. Reset restores the 7 accounts, 10 assets and 10 requests.</p>
+        <?php endif; ?>
     </div>
 </aside>
 

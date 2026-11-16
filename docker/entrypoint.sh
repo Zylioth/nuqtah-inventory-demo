@@ -23,4 +23,25 @@ sed -ri "s/<VirtualHost \*:80>/<VirtualHost *:${PORT}>/" /etc/apache2/sites-avai
 
 echo "nuqtah-demo: Apache listening on port ${PORT}"
 echo "nuqtah-demo: MPMs enabled: $(ls /etc/apache2/mods-enabled/ 2>/dev/null | grep '^mpm_' | tr '\n' ' ')"
+
+# A writable demo needs a known starting point: re-seed on every container
+# start, so a redeploy or restart clears whatever the last visitors changed.
+# Runs in the background with retries — the database may still be starting, and
+# a slow seed must never delay Apache past the platform's health check.
+if [ "${DEMO_MODE}" = "true" ]; then
+    (
+        attempt=1
+        while [ "$attempt" -le 12 ]; do
+            if php /var/www/html/demo_reset.php; then
+                echo "nuqtah-demo: seeded demo data"
+                exit 0
+            fi
+            echo "nuqtah-demo: seed attempt ${attempt} failed, retrying in 5s"
+            attempt=$((attempt + 1))
+            sleep 5
+        done
+        echo "nuqtah-demo: could not seed demo data; continuing with existing rows"
+    ) &
+fi
+
 exec apache2-foreground

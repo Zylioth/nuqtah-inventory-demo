@@ -3,18 +3,18 @@
 A web-based ICT asset management system for a school's IT department: track inventory, manage serial-tagged hardware, handle borrowing requests end-to-end, and keep an audit log. Built with plain PHP and MySQL, no framework.
 
 **Live demo:** **https://nuqtah-demo.up.railway.app** — log in with `admin` / `demo1234`
-**Read-only demo · seeded data · no signup required**
+**Fully clickable demo · seeded data · shared state**
 
 > Running on a Railway trial. If the URL is down, the trial credit has expired rather than the build being broken — everything you need to run it yourself is below.
 
-> Visitors can log in and browse everything. Actions that would change data are blocked with a notice, so the demo never breaks and never needs reseeding.
+> Everything works: add to cart, submit a request, approve it, hand over, return it, add an asset. The data is shared and it drifts, so the demo reseeds on every deploy and an admin can reset it from the sidebar. Deleting records and changing passwords are the only actions disabled, because either one would break the demo for the next visitor.
 
 ---
 
 ## Source of truth
 
 This is a **demo build** of the Nuqtah IT system: the same application, with
-seeded data, a read-only guard and a Docker/Railway deployment target. The full
+seeded data, a demo guard and a Docker/Railway deployment target. The full
 development history lives in the original repository:
 
 **https://github.com/Zylioth/Nuqtah-Inventory_Management_System**
@@ -101,7 +101,7 @@ No framework, no router: each page is a PHP script that includes shared partials
 ```
 request ──> page script ──> includes/db_connect.php ──> PDO (MySQL)
                 │                    │
-                │                    └── includes/demo_mode.php   ← read-only guard
+                │                    └── includes/demo_mode.php   ← demo guard
                 ├──> includes/header.php | admin/includes/sidebar.php   ← layout
                 └──> POST ──> actions/*.php ──> redirect back
 ```
@@ -160,26 +160,48 @@ erDiagram
 
 ---
 
-## Read-only demo mode
+## Demo mode
 
-The public demo must not let strangers mutate data, but editing ~18 mutating endpoints by hand invites a missed one. Instead the rule is structural, enforced once in `includes/demo_mode.php`:
+A demo that refuses every write only shows screens. This one runs the flows, so
+a visitor can see what pressing the button actually does:
 
-1. anything under an `actions/` directory is blocked;
-2. mutating scripts outside `actions/` are listed explicitly;
-3. any POST to a page is blocked;
-4. login and logout stay allowed — they touch the session, never the database;
-5. two read-only AJAX helpers are allowlisted, because the handover form needs them.
+add to cart → confirm & submit → the request appears in **My Requests** and the
+admin **Request Queue** → approve → hand over → return, with the dashboard
+counters moving as it goes.
 
-Blocked requests redirect back with a one-shot notice. No cron job, no reseeding, no "restore demo data" button — the demo is stateless by construction.
+`includes/demo_mode.php` blocks only what cannot be undone by the next visitor:
 
-`tests/demo_guard_test.php` asserts all 40 cases, so a refactor that reopens a write path fails the test instead of the public demo:
+| Blocked | Why |
+|---|---|
+| delete asset / user / serial tag | removes rows the seed data cannot explain |
+| change / reset / recover password | one visitor locking out `admin` breaks it for everyone |
+
+Everything else is live. Blocked requests redirect back to the page you came
+from with a specific notice ("Deleting an asset is disabled in this demo"), not
+a silent bounce.
+
+Because writes are shared, the data drifts:
+
+- the container reseeds from `seed.sql` on every start (`docker/entrypoint.sh`);
+- an admin can press **Reset demo data** in the sidebar at any time;
+- `php demo_reset.php` does the same from a shell.
+
+The reset also repairs the schema: it adds `borrowing_requests.pickup_date` if
+the database predates it, which is what the checkout form has always written.
+
+`tests/demo_guard_test.php` (40 cases) pins the boundary, and
+`tests/demo_flow_test.php` drives the real HTTP flow — login, cart, checkout,
+approval, handover, return, a refused delete, and a reset:
 
 ```
 php tests/demo_guard_test.php
 40 cases, 0 failed
+
+php tests/demo_flow_test.php http://127.0.0.1:8131
+ALL PASS
 ```
 
-Outside demo mode (`DEMO_MODE` unset or `false`) the application is fully functional. Outgoing email is likewise redirected to `storage/mail.log` in demo mode, so the demo can be exercised without touching a real mailbox.
+Outside demo mode (`DEMO_MODE` unset or `false`) the application is fully functional. Outgoing email is redirected to `storage/mail.log` in demo mode, so the demo can be exercised without touching a real mailbox.
 
 ---
 
@@ -267,7 +289,7 @@ first import needs a cron job, a reseed script or a "restore data" button.
 ├── actions/                   requester write endpoints
 ├── includes/
 │   ├── db_connect.php         PDO connection + env loader
-│   ├── demo_mode.php          read-only guard
+│   ├── demo_mode.php          demo guard
 │   ├── mail_helper.php        PHPMailer wrapper
 │   └── header.php / footer.php
 ├── assets/                    css, js, images, uploads

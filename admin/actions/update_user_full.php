@@ -18,6 +18,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $new_role = trim($_POST['role'] ?? 'Student');
     $new_status = trim($_POST['account_status'] ?? 'Active'); 
 
+    // Demo: `admin` is the account printed in the README. Renaming it or
+    // stripping its role would lock every visitor out of the back office, so
+    // that one row is read-only even though every other user is editable.
+    if (function_exists('demo_mode_enabled') && demo_mode_enabled()) {
+        $demoAdmin = $pdo->prepare("SELECT username FROM users WHERE user_id = ?");
+        $demoAdmin->execute([$user_id]);
+        if (strcasecmp((string) $demoAdmin->fetchColumn(), 'admin') === 0) {
+            $_SESSION['demo_notice'] = 'The demo admin account is protected — edit another user to see this flow.';
+            header('Location: ../manage_users.php');
+            exit();
+        }
+    }
+
     // basic validation
     if (strlen($username) < 3 || strlen($full_name) < 2) { header("Location: ../manage_users.php?msg=error"); exit(); }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { header("Location: ../manage_users.php?msg=error"); exit(); }

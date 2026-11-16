@@ -1,57 +1,48 @@
 <?php
 /**
- * Read-only demo mode.
+ * Demo mode.
  * ---------------------------------------------------------------------------
  * Enabled only when the DEMO_MODE environment variable is exactly "true".
  * Absent or any other value => the application behaves normally, so the same
  * codebase still runs fully functional on a local XAMPP install.
  *
- * Enforcement
- * -----------
- * Rather than editing ~18 mutating endpoints individually (and risking a
- * missed one on a public URL), the rule is structural:
+ * A demo has to show consequences, so the writes that make up the story are
+ * *allowed*: adding to the cart, submitting a request, approving or rejecting
+ * it, handover, return, adding or editing assets, tags and users, signup.
  *
- *   1. Anything under an `actions/` directory mutates state  -> blocked.
- *   2. A short list of mutating scripts that live outside `actions/` -> blocked.
- *   3. Any POST to a page (cart checkout, add/edit asset, user forms) -> blocked.
- *   4. Login and logout stay allowed: they touch the session, never the database.
+ * Only the actions that cannot be undone by the next visitor are blocked:
  *
- * A new file added under `actions/` is protected automatically. A new mutating
- * *page* outside `actions/` must be added to $BLOCKED_SCRIPTS.
+ *   1. deleting an asset, a user or a serial tag;
+ *   2. changing, resetting or recovering a password.
  *
- * Known, deliberate exception: pages such as my_requests.php clear the user's
- * own unread flag on load (UPDATE ... SET is_read = 1). That write still runs,
- * because blocking it would throw on a normal page view. It only affects the
- * notification badge of the account being viewed, never shared inventory data.
+ * Those are the ones where a single visitor would break the demo for everyone
+ * (a changed admin password locks the account out permanently, a deleted asset
+ * leaves a hole the seed data cannot explain). The rest of the demo is live and
+ * shared, which is why `demo_reset.php` exists: it restores seed.sql, and the
+ * container re-seeds on every start.
+ *
+ * The demo admin account (`admin`) is additionally protected from edits that
+ * would rename it or strip its role — see admin/actions/update_user_full.php.
  */
 
 if (!function_exists('demo_mode_enabled')) {
 
     /**
-     * Mutating scripts that live outside an actions/ directory.
-     * Matched by path suffix so it works whether the app is served from
-     * the web root or a subdirectory.
+     * Scripts that must never run, mapped to the message the visitor sees.
+     * Matched by path suffix so it works whether the app is served from the
+     * web root or a subdirectory.
      *
-     * @return string[]
+     * @return array<string, string>
      */
     function demo_blocked_scripts(): array
     {
         return [
-            '/admin/delete_asset.php',
-        ];
-    }
-
-    /**
-     * Scripts under actions/ that only read. They must stay reachable or the
-     * admin forms that populate their dropdowns break (handover / tag picker).
-     *
-     * @return string[]
-     */
-    function demo_allowed_scripts(): array
-    {
-        return [
-            '/admin/actions/get_asset_tags.php',
-            '/admin/actions/get_available_tags.php',
+            '/admin/delete_asset.php'              => 'Deleting an asset is disabled in this demo. Everything else works.',
+            '/admin/actions/delete_user.php'       => 'Deleting accounts is disabled in this demo. Everything else works.',
+            '/admin/actions/delete_asset_tag.php'  => 'Deleting serial tags is disabled in this demo. Everything else works.',
+            '/actions/change_password.php'         => 'Password changes are disabled in this demo — sign in with admin / demo1234.',
+            '/actions/reset_password.php'          => 'Password resets are disabled in this demo — sign in with admin / demo1234.',
+            '/actions/forgot_password.php'         => 'Password recovery is disabled in this demo — sign in with admin / demo1234.',
         ];
     }
 
@@ -66,47 +57,37 @@ if (!function_exists('demo_mode_enabled')) {
     }
 
     /**
-     * Decide whether a request must be blocked. Kept separate from the
-     * redirect so it can be unit-tested without a web server.
+     * The message to show if this request must be blocked, or null if it runs.
      */
-    function demo_is_blocked(string $path, string $method): bool
+    function demo_blocked_reason(string $path): ?string
     {
-        $path   = str_replace('\\', '/', $path);
-        $method = strtoupper($method);
+        $path = str_replace('\\', '/', $path);
 
-        // 4. Session-only endpoints stay available so visitors can log in.
-        foreach (['/actions/login_process.php', '/actions/logout.php'] as $allowed) {
-            if (demo_path_ends_with($path, $allowed)) {
-                return false;
-            }
-        }
-
-        // Read-only helpers under actions/ must keep working.
-        foreach (demo_allowed_scripts() as $allowed) {
-            if (demo_path_ends_with($path, $allowed)) {
-                return false;
-            }
-        }
-
-        // 1. Any script inside actions/ or admin/actions/.
-        if (preg_match('#/(?:admin/)?actions/#', $path) === 1) {
-            return true;
-        }
-
-        // 2. Mutating scripts outside actions/.
-        foreach (demo_blocked_scripts() as $suffix) {
+        foreach (demo_blocked_scripts() as $suffix => $reason) {
             if (demo_path_ends_with($path, $suffix)) {
-                return true;
+                return $reason;
             }
         }
 
-        // 3. A POST to a page is a form submission (cart, add/edit asset, ...).
-        return $method === 'POST';
+        return null;
     }
 
     /**
-     * Block the current request if demo mode is on and it would mutate state.
-     * Redirects and exits when blocked; returns otherwise.
+     * Decide whether a request must be blocked. Kept separate from the
+     * redirect so it can be unit-tested without a web server.
+     *
+     * $method is accepted for call-site compatibility and future use; the
+     * decision is per script, because a delete reachable by GET is as final
+     * as one reached by POST.
+     */
+    function demo_is_blocked(string $path, string $method = 'GET'): bool
+    {
+        return demo_blocked_reason($path) !== null;
+    }
+
+    /**
+     * Block the current request if demo mode is on and the script is one of
+     * the irreversible ones. Redirects and exits when blocked.
      */
     function demo_guard(): void
     {
@@ -115,14 +96,14 @@ if (!function_exists('demo_mode_enabled')) {
         }
 
         $path   = $_SERVER['SCRIPT_NAME'] ?? '';
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $reason = demo_blocked_reason($path);
 
-        if (!demo_is_blocked($path, $method)) {
+        if ($reason === null) {
             return;
         }
 
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['demo_notice'] = 'This is a read-only demo — changes are disabled.';
+            $_SESSION['demo_notice'] = $reason;
         }
 
         header('Location: ' . demo_return_url(str_replace('\\', '/', $path)));
@@ -154,7 +135,7 @@ if (!function_exists('demo_mode_enabled')) {
     }
 
     /**
-     * Print the one-shot "read-only" notice and clear it.
+     * Print the one-shot notice and clear it.
      * Called from both layouts (user header and admin sidebar).
      */
     function demo_render_notice(): void

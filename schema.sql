@@ -102,6 +102,7 @@ CREATE TABLE `borrowing_requests` (
   `request_date`       timestamp NOT NULL DEFAULT current_timestamp(),
   `issued_date`        datetime DEFAULT NULL,
   `return_date`        date DEFAULT NULL,
+  `pickup_date`        date DEFAULT NULL,
   `actual_return_date` datetime DEFAULT NULL,
   `status`             enum('Pending','Approved','On Loan','Returned','Rejected','Issued')
                          NOT NULL DEFAULT 'Pending',
